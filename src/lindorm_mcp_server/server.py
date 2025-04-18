@@ -54,7 +54,7 @@ def lindorm_retrieve_from_index(index_name: str, query: str,  content_field: str
     :param query: the query that you want to search in knowledgebase
     :param content_field: the text field that store the content text. You can get it from the index structure by lindorm_get_index_mappings tool
     :param vector_field: the vector field that store the vector index. You can get it from the index structure by lindorm_get_index_mappings tool
-    :param top_k: the result that you want to return
+    :param top_k: the result number that you want to return
     :return: the most relevant content stored in the knowledgebase.
     """
     lindorm_search_client = ctx.request_context.lifespan_context.lindorm_search_client
@@ -69,7 +69,7 @@ def lindorm_get_index_fields(index_name: str, ctx: Context = None) -> str:
     """
     Get the fields info of the indexes(or knowledgebase), especially get the vector stored field and content stored field.
     :param index_name: the index name, or known as knowledgebase name
-    :return: the index structure in json format
+    :return: the index fields information
     """
     lindorm_search_client = ctx.request_context.lifespan_context.lindorm_search_client
     mapping = lindorm_search_client.get_index_mappings(index_name)
