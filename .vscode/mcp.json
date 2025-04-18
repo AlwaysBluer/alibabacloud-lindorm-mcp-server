@@ -1,0 +1,17 @@
+{
+  "mcpServers": {
+    "lindorm": {
+      "command": "/path/to/uv",
+      "args": [
+        "--directory",
+        "/path/to/alibabacloud-lindorm-mcp-server/src/mcp_server_milvus",
+        "run",
+        "server.py",
+        "--lindorm_instance_id",
+        "ld-xxxxxxxxxxxxxxxxxx",
+        "--using_vpc",
+        false
+      ]
+    }
+  }
+}

@@ -1,0 +1,60 @@
+import json
+
+import requests
+
+
+#### LINDORM AI EMBEDDING ####
+def _post_model_request(host: str, username: str, password: str, model: str, data: dict, **kwargs):
+    data = json.dumps(data)
+    url = 'http://{}:{}/v1/ai/models/{}/infer'.format(host, 9002, model)
+    headers = {
+        "Content-Type": "application/json",
+        "x-ld-ak": username,
+        "x-ld-sk": password
+    }
+    connect_timeout = kwargs.get('connect_timeout', 60)
+    read_timeout = kwargs.get('read_timeout', 60)
+    timeout = (connect_timeout, read_timeout)
+
+    try:
+        result = requests.post(url, data=data, headers=headers, verify=False, timeout=timeout)
+        result.raise_for_status()
+        return 0, result.json()['data']
+    except requests.exceptions.Timeout as time_out_err:
+        return -1, f"request out of time: f{time_out_err}"
+    except requests.exceptions.HTTPError as http_err:
+        return -1, f"HTTP error: {http_err}"
+    except requests.exceptions.RequestException as err:
+        return -1, f"request error happened: {err}"
+
+
+def text_embedding(host: str, username: str, password: str, model: str, text: str):
+    data = {"input": [text]}
+    return _post_model_request(host, username, password, model, data)
+
+
+def get_lindorm_search_host(instance_id: str, using_vpc: bool = False):
+    """
+    Get search host by instance id
+    :param instance_id: Lindorm instance ID
+    :param using_vpc: Boolean flag indicating whether to use VPC endpoint
+    :return: Formatted search host URL
+    """
+    base_url = "lindorm.aliyuncs.com"
+    if using_vpc:
+        endpoint = "proxy-search-vpc"
+    else:
+        endpoint = "proxy-search-pub"
+    return f"{instance_id}-{endpoint}.{base_url}"
+
+
+def get_lindorm_ai_host(instance_id: str, using_vpc: bool = False):
+    base_url = "lindorm.aliyuncs.com"
+    if using_vpc:
+        endpoint = "proxy-ai-vpc"
+    else:
+        endpoint = "proxy-ai-pub"
+    return f"{instance_id}-{endpoint}.{base_url}"
+
+def str_to_bool(value):
+    return value.lower() in ('true', '1', 'yes', 'on', 't')
