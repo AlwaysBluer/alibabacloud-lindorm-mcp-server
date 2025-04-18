@@ -56,6 +56,15 @@ def get_lindorm_ai_host(instance_id: str, using_vpc: bool = False):
         endpoint = "proxy-ai-pub"
     return f"{instance_id}-{endpoint}.{base_url}"
 
+def get_lindorm_table_host(instance_id: str, using_vpc: bool = False):
+    base_url = "lindorm.aliyuncs.com"
+    if using_vpc:
+        endpoint = "proxy-lindorm-vpc"
+    else:
+        endpoint = "proxy-lindorm-pub"
+    return f"{instance_id}-{endpoint}.{base_url}"
+
+
 def str_to_bool(value):
     return value.lower() in ('true', '1', 'yes', 'on', 't')
 

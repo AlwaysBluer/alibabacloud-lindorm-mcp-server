@@ -7,9 +7,9 @@ AI_HOST = ""
 USERNAME = ""
 PASSWORD = ""
 TEXT_EMBEDDING_MODEL = ""
-TEST_INDEX_NAME = "demo"
-CONTENT_FIELD = "content"
-VECTOR_FIELD = "vector_field"
+TEST_INDEX_NAME = ""
+CONTENT_FIELD = ""
+VECTOR_FIELD = ""
 
 
 @pytest.fixture(scope="module")

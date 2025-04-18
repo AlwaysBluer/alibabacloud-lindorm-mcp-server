@@ -1,18 +1,19 @@
 import argparse
-import json
 import os
 from contextlib import asynccontextmanager
 from typing import AsyncIterator
 from dotenv import load_dotenv
 from mcp.server.fastmcp import Context, FastMCP
 
-from .utils import get_lindorm_ai_host, get_lindorm_search_host, str_to_bool, simplify_mappings
+from .utils import *
 from .lindorm_vector_search import LindormVectorSearchClient
+from .lindorm_wide_table import LindormWideTableClient
 
 
 class LindormContext:
-    def __init__(self, lindorm_search_client: LindormVectorSearchClient):
+    def __init__(self, lindorm_search_client: LindormVectorSearchClient, lindorm_sql_client: LindormWideTableClient):
         self.lindorm_search_client = lindorm_search_client
+        self.lindorm_sql_client = lindorm_sql_client
 
 
 @asynccontextmanager
@@ -28,8 +29,15 @@ async def server_lifespan(server: FastMCP) -> AsyncIterator[LindormContext]:
         text_embedding_model=config.get("text_embedding_model")
     )
 
+    sql_client = LindormWideTableClient(
+        table_host=config.get("lindorm_table_host"),
+        username=config.get("username"),
+        password=config.get("password"),
+        database=config.get("table_database")
+    )
+
     try:
-        yield LindormContext(vector_search_client)
+        yield LindormContext(vector_search_client, sql_client)
     finally:
         pass
 
@@ -83,6 +91,19 @@ def lindorm_list_all_index(ctx: Context = None) -> str:
     output += "\n".join(f"{i + 1}. {index}" for i, index in enumerate(all_index))
     return output
 
+@mcp.tool()
+def lindorm_execute_sql(query: str, ctx: Context = None) -> str:
+    """
+    Execute SQL on Lindorm tables like Mysql.
+    :param query: The SQL command to execute
+    :return: the results of executing the sql or prompt when meeting certain types of exception
+    """
+    lindorm_sql_client = ctx.request_context.lifespan_context.lindorm_sql_client
+    res = lindorm_sql_client.execute_query(query)
+    output = f"The results of executing sql {query} is\n"
+    output += res
+    return output
+
 
 def parse_arguments():
     parser = argparse.ArgumentParser(description="LINDORM MCP Server")
@@ -91,6 +112,7 @@ def parse_arguments():
     parser.add_argument("--username", type=str, default="root", help="Lindorm username")
     parser.add_argument("--password", type=str, help="Lindorm password")
     parser.add_argument("--embedding_model", type=str, help="Text Embedding Model Name")
+    parser.add_argument("--database", type=str, default="default", help="The Lindorm Database to execute sql")
     return parser.parse_args()
 
 
@@ -106,9 +128,11 @@ def main():
     mcp.config = {
         "lindorm_search_host": get_lindorm_search_host(instance_id, using_vpc),
         "lindorm_ai_host": get_lindorm_ai_host(instance_id, using_vpc),
+        "lindorm_table_host": get_lindorm_table_host(instance_id, using_vpc),
         "username": os.environ.get("USERNAME", args.username),
         "password": os.environ.get("PASSWORD", args.password),
-        "text_embedding_model": os.environ.get("TEXT_EMBEDDING_MODEL", args.embedding_model)
+        "text_embedding_model": os.environ.get("TEXT_EMBEDDING_MODEL", args.embedding_model),
+        "table_database": os.environ.get("TABLE_DATABASE", args.database)
     }
     mcp.run()
 
