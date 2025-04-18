@@ -58,3 +58,20 @@ def get_lindorm_ai_host(instance_id: str, using_vpc: bool = False):
 
 def str_to_bool(value):
     return value.lower() in ('true', '1', 'yes', 'on', 't')
+
+def simplify_mappings(mappings, index_name):
+    if not mappings or index_name not in mappings:
+        return None
+
+    properties = mappings[index_name]['mappings'].get('properties', {})
+    simplified = {}
+
+    for field, details in properties.items():
+        if 'type' in details:
+            simplified[field] = details['type']
+        elif 'properties' in details:
+            simplified[field] = 'object'
+        else:
+            simplified[field] = 'unknown'
+
+    return simplified

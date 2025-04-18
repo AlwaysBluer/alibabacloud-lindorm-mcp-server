@@ -6,8 +6,8 @@ from typing import AsyncIterator
 from dotenv import load_dotenv
 from mcp.server.fastmcp import Context, FastMCP
 
-from utils import get_lindorm_ai_host, get_lindorm_search_host, str_to_bool
-from lindorm_vector_search import LindormVectorSearchClient
+from .utils import get_lindorm_ai_host, get_lindorm_search_host, str_to_bool, simplify_mappings
+from .lindorm_vector_search import LindormVectorSearchClient
 
 
 class LindormContext:
@@ -38,15 +38,15 @@ mcp = FastMCP("Lindorm", lifespan=server_lifespan, log_level="ERROR")
 
 
 @mcp.tool()
-def lindorm_retrieve_from_index(index_name: str, query: str, top_k: int = 5, content_field: str = "content",
-                                vector_field: str = "vector_field", ctx: Context = None) -> str:
+def lindorm_retrieve_from_index(index_name: str, query: str,  content_field: str, vector_field: str,
+                                top_k: int = 5, ctx: Context = None) -> str:
     """
     Retrieve from an existing indexes(or knowledgebase) using both full-text search and vector search, and return the aggregated results
     :param index_name: the index name, or known as knowledgebase name
     :param query: the query that you want to search in knowledgebase
+    :param content_field: the text field that store the content text. You can get it from the index structure by lindorm_get_index_mappings tool
+    :param vector_field: the vector field that store the vector index. You can get it from the index structure by lindorm_get_index_mappings tool
     :param top_k: the result that you want to return
-    :param content_field: the text field that store the content text. You can get it from the index structure
-    :param vector_field: the vector field that store the vector index. You can get it from the index structure
     :return: the most relevant content stored in the knowledgebase.
     """
     lindorm_search_client = ctx.request_context.lifespan_context.lindorm_search_client
@@ -57,16 +57,17 @@ def lindorm_retrieve_from_index(index_name: str, query: str, top_k: int = 5, con
 
 
 @mcp.tool()
-def lindorm_get_index_mappings(index_name: str, ctx: Context = None) -> str:
+def lindorm_get_index_fields(index_name: str, ctx: Context = None) -> str:
     """
-    Get the structure of the indexes(or knowledgebase), especially get the vector stored field and content stored field.
+    Get the fields info of the indexes(or knowledgebase), especially get the vector stored field and content stored field.
     :param index_name: the index name, or known as knowledgebase name
     :return: the index structure in json format
     """
     lindorm_search_client = ctx.request_context.lifespan_context.lindorm_search_client
     mapping = lindorm_search_client.get_index_mappings(index_name)
+    fields_info = simplify_mappings(mapping, index_name)
     output = f"The structure(mapping) of index {index_name} is\n"
-    output += json.dumps(mapping, indent=2, ensure_ascii=False)
+    output += json.dumps(fields_info, indent=2, ensure_ascii=False)
     return output
 
 
@@ -93,7 +94,7 @@ def parse_arguments():
     return parser.parse_args()
 
 
-if __name__ == "__main__":
+def main():
     load_dotenv()
     args = parse_arguments()
     instance_id = os.environ.get("LINDORM_INSTANCE_ID", args.lindorm_instance_id)
@@ -110,3 +111,8 @@ if __name__ == "__main__":
         "text_embedding_model": os.environ.get("TEXT_EMBEDDING_MODEL", args.embedding_model)
     }
     mcp.run()
+
+
+
+if __name__ == "__main__":
+    main()

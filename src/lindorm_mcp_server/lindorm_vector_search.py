@@ -1,5 +1,5 @@
 from opensearchpy import OpenSearch
-from utils import text_embedding
+from .utils import text_embedding
 
 
 class LindormVectorSearchClient:
@@ -56,7 +56,7 @@ class LindormVectorSearchClient:
                 body=query,
                 index=index_name
             )
-            return [hit[content_field] for hit in response['hits']['hits']]
+            return [hit["_source"][content_field] for hit in response['hits']['hits']]
         except Exception as e:
             print(f"Error performing full text search: {e}")
             return []
@@ -80,7 +80,7 @@ class LindormVectorSearchClient:
                 body=query,
                 index=index_name
             )
-            return [hit[content_field] for hit in response['hits']['hits']]
+            return [hit["_source"][content_field] for hit in response['hits']['hits']]
         except Exception as e:
             print(f"Error performing vector search: {e}")
             return []
@@ -115,7 +115,7 @@ class LindormVectorSearchClient:
                 body=query,
                 index=index_name
             )
-            return [hit[content_field] for hit in response['hits']['hits']]
+            return [hit["_source"][content_field] for hit in response['hits']['hits']]
         except Exception as e:
             print(f"Error performing RRF search: {e}")
             return []

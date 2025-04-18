@@ -4,9 +4,11 @@
       "command": "/path/to/uv",
       "args": [
         "--directory",
-        "/path/to/alibabacloud-lindorm-mcp-server/src/mcp_server_milvus",
+        "/path/to/alibabacloud-lindorm-mcp-server/",
         "run",
-        "server.py",
+        "python",
+        "-m",
+        "src.lindorm_mcp_server.server",
         "--lindorm_instance_id",
         "ld-xxxxxxxxxxxxxxxxxx",
         "--using_vpc",
