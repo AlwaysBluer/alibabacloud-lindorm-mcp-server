@@ -24,17 +24,21 @@ cp .env.example .env
 Note: This configuration assumes all engines share the same username and password.
 
 ## Running the MCP Server
-Directly start the mcp server
+You should install `uv`.
+Directly start the mcp server. 
 ```shell
 cd /path/to/alibabacloud-lindorm-mcp-server/
+
+uv pip install .
 
 uv run python -m src.lindorm_mcp_server.server
 ```
 
 ## Visual Studio Code
 1. Install the Cline extension.
-2. Copy the MCP configuration from .vscode/mcp.json to cline_mcp_settings.json, replacing paths and variables as needed.
-3. Start the MCP server through the Cline extension.
+2. Create the `.env` file under `/path/to/alibabacloud-lindorm-mcp-server/`
+3. Copy the MCP configuration from .vscode/mcp.json to cline_mcp_settings.json, replacing paths and variables as needed.
+4. Start the MCP server through the Cline extension.
 
 
 # Components

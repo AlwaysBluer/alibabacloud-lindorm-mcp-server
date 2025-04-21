@@ -8,11 +8,7 @@
         "run",
         "python",
         "-m",
-        "src.lindorm_mcp_server.server",
-        "--lindorm_instance_id",
-        "ld-xxxxxxxxxxxxxxxxxx",
-        "--using_vpc",
-        false
+        "src.lindorm_mcp_server.server"
       ]
     }
   }
