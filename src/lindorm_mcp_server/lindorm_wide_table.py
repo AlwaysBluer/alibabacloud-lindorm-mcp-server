@@ -28,31 +28,39 @@ class LindormWideTableClient:
         if self.connection:
             self.connection.close()
 
+    def show_tables(self) -> str:
+        try:
+            self.cursor.execute(f"SHOW TABLES")
+            tables = self.cursor.fetchall()
+            result = ["Tables_in_" + self.config["database"]]  # Header
+            result.extend([table[0] for table in tables])
+            return "\n".join(result)
+        except Error as e:
+            return f"Error executing SHOW TABLES: {str(e)}"
+
+    def describe_table(self, table_name: str) -> str:
+        try:
+            self.cursor.execute(f"DESCRIBE TABLE {table_name}")
+            columns = [desc[0] for desc in self.cursor.description]
+            rows = self.cursor.fetchall()
+            result = [",".join(map(str, row)) for row in rows]
+            return "\n".join([",".join(columns)] + result)
+        except Error as e:
+            return f"Error executing DESCRIBE TABLE {table_name}: {str(e)}"
+
     def execute_query(self, query: str) -> str:
         """Execute SQL commands."""
         try:
+            if not query.strip().upper().startswith("SELECT"):
+                return (f"Query should start with SELECT. " +
+                        "Example: SELECT * FROM table ")
+
             self.cursor.execute(query)
-
-            # Special handling for SHOW TABLES
-            if query.strip().upper().startswith("SHOW TABLES"):
-                tables = self.cursor.fetchall()
-                result = ["Tables_in_" + self.config["database"]]  # Header
-                result.extend([table[0] for table in tables])
-                return "\n".join(result)
-
             # Regular SELECT queries
-            elif query.strip().upper().startswith("SELECT") or query.strip().upper().startswith(
-                    "SHOW") or query.strip().upper().startswith("DESCRIBE"):
-                columns = [desc[0] for desc in self.cursor.description]
-                rows = self.cursor.fetchall()
-                result = [",".join(map(str, row)) for row in rows]
-                return "\n".join([",".join(columns)] + result)
-
-            # Non-SELECT queries
-            else:
-                self.connection.commit()
-                return f"Query executed successfully. Rows affected: {self.cursor.rowcount}"
-
+            columns = [desc[0] for desc in self.cursor.description]
+            rows = self.cursor.fetchall()
+            result = [",".join(map(str, row)) for row in rows]
+            return "\n".join([",".join(columns)] + result)
         except Error as e:
             error_msg = str(e)
             if "Detect inefficient query" in error_msg:

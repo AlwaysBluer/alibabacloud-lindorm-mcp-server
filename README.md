@@ -57,9 +57,13 @@ uv run python -m src.lindorm_mcp_server.server
   * Parameters:
     * index_name: the index name, or known as knowledgebase name
 * `lindorm_list_all_index`: List all the indexes(or knowledgebase) you have.
-* `lindorm_execute_sql`: Execute SQL on Lindorm tables like Mysql.
+* `lindorm_execute_sql`: Execute SQL query on Lindorm database.
   * Parameters
-    * query: The SQL command to execute
+    * query: The SQL query to execute which start with select
+* `lindorm_show_tables`: Get all tables in the Lindorm database
+* `lindorm_describe_table`: Get tables schema in the Lindorm database
+  * Parameters
+    * table_name: the table name
 
 
 

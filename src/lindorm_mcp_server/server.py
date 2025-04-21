@@ -94,8 +94,8 @@ def lindorm_list_all_index(ctx: Context = None) -> str:
 @mcp.tool()
 def lindorm_execute_sql(query: str, ctx: Context = None) -> str:
     """
-    Execute SQL on Lindorm tables like Mysql.
-    :param query: The SQL command to execute
+    Execute SQL query on Lindorm database.
+    :param query: The SQL query to execute which start with select
     :return: the results of executing the sql or prompt when meeting certain types of exception
     """
     lindorm_sql_client = ctx.request_context.lifespan_context.lindorm_sql_client
@@ -103,6 +103,25 @@ def lindorm_execute_sql(query: str, ctx: Context = None) -> str:
     output = f"The results of executing sql {query} is\n"
     output += res
     return output
+
+@mcp.tool()
+def lindorm_show_tables(ctx: Context = None) -> str:
+    """
+    Get all tables in the Lindorm database
+    :return: the tables in the lindorm database
+    """
+    lindorm_sql_client = ctx.request_context.lifespan_context.lindorm_sql_client
+    return lindorm_sql_client.show_tables()
+
+@mcp.tool()
+def lindorm_describe_table(table_name: str, ctx: Context = None) -> str:
+    """
+    Get tables schema in the Lindorm database
+    :param table_name: the table name
+    :return: the tables schema
+    """
+    lindorm_sql_client = ctx.request_context.lifespan_context.lindorm_sql_client
+    return lindorm_sql_client.describe_table(table_name)
 
 
 def parse_arguments():
