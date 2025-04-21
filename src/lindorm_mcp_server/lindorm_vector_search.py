@@ -1,3 +1,4 @@
+import logging
 from opensearchpy import OpenSearch
 from .utils import text_embedding
 
@@ -15,6 +16,14 @@ class LindormVectorSearchClient:
         self.ai_host = ai_host
         self.text_embedding_model = text_embedding_model
 
+    def _check_index_exist(self, index_name: str) -> bool:
+        try:
+            return self.client.indices.exists(index=index_name)
+        except Exception as e:
+            # 处理可能的异常
+            logging.error(f"client call check_index_exist exception {index_name}: {e}")
+            return False
+
     def _embedding_query(self, query: str) -> list[float]:
         code, res_or_exception = text_embedding(self.ai_host, self.username, self.password, self.text_embedding_model,
                                                 query)
@@ -29,7 +38,7 @@ class LindormVectorSearchClient:
             index_names = [index['index'] for index in indices]
             return index_names
         except Exception as e:
-            print(f"Error listing indexes: {e}")
+            logging.error(f"Error listing indexes: {e}")
             return []
 
     def get_index_mappings(self, index_name: str):
@@ -37,10 +46,12 @@ class LindormVectorSearchClient:
             mappings = self.client.indices.get_mapping(index=index_name)
             return mappings
         except Exception as e:
-            print(f"Error getting mappings for index {index_name}: {e}")
+            logging.error(f"Error getting mappings for index {index_name}: {e}")
             return None
 
     def full_text_search(self, index_name: str, query_text: str, size: int, content_field: str) -> list[str]:
+        if not self._check_index_exist(index_name):
+            return [f"{index_name} not exist"]
         query = {
             "size": size,
             "_source": [content_field],
@@ -58,10 +69,12 @@ class LindormVectorSearchClient:
             )
             return [hit["_source"][content_field] for hit in response['hits']['hits']]
         except Exception as e:
-            print(f"Error performing full text search: {e}")
+            logging.error(f"Error performing full text search: {e}")
             return []
 
     def vector_search(self, index_name: str, query_text: str, top_k: int, content_field: str, vector_field: str) -> list[str]:
+        if not self._check_index_exist(index_name):
+            return [f"{index_name} not exist"]
         vector = self._embedding_query(query_text)
         query = {
             "size": top_k,
@@ -82,10 +95,12 @@ class LindormVectorSearchClient:
             )
             return [hit["_source"][content_field] for hit in response['hits']['hits']]
         except Exception as e:
-            print(f"Error performing vector search: {e}")
+            logging.error(f"Error performing vector search: {e}")
             return []
 
     def rrf_search(self, index_name: str, query_text: str, top_k: int, content_field: str, vector_field: str) -> list[str]:
+        if not self._check_index_exist(index_name):
+            return [f"{index_name} not exist"]
         vector = self._embedding_query(query_text)
         query = {
             "size": top_k,
@@ -117,5 +132,5 @@ class LindormVectorSearchClient:
             )
             return [hit["_source"][content_field] for hit in response['hits']['hits']]
         except Exception as e:
-            print(f"Error performing RRF search: {e}")
+            logging.error(f"Error performing RRF search: {e}")
             return []
