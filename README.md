@@ -36,7 +36,33 @@ uv run python -m src.lindorm_mcp_server.server
 
 ## Visual Studio Code
 1. Install the Cline extension.
-2. Create the `.env` file under `/path/to/alibabacloud-lindorm-mcp-server/`
+2. Add the following entry to the `mcpServers` object in you `cline_mcp_settings.json` file:
+```shell
+{
+  "mcpServers": {
+    "lindorm-mcp-server": {
+      "disabled": false,
+      "command": "/opt/homebrew/bin/uv",
+      "args": [
+        "--directory",
+        "your_path_to/alibabacloud-lindorm-mcp-server/",
+        "run",
+        "python",
+        "-m",
+        "src.lindorm_mcp_server.server",
+        "--lindorm_instance_id",
+        "<YOUR INSTANCE ID>",
+        "--username",
+        "<USERNAME>",
+        "--password",
+        "<PASSWORD>",
+        "--embedding_model",
+        "<MODELNAME>"
+      ]
+    }
+  }
+}
+```
 3. Copy the MCP configuration from .vscode/mcp.json to cline_mcp_settings.json, replacing paths and variables as needed.
 4. Start the MCP server through the Cline extension.
 
