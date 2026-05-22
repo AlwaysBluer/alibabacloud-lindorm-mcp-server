@@ -1,17 +1,35 @@
 import logging
 from opensearchpy import OpenSearch
 from .utils import text_embedding
+from .security import (
+    validate_positive_limit,
+    validate_query_text,
+    validate_search_field_name,
+    validate_search_index_name,
+)
 
 
 class LindormVectorSearchClient:
-    def __init__(self, search_host: str, ai_host: str, username: str, password: str, text_embedding_model: str):
+    def __init__(
+        self,
+        search_host: str,
+        ai_host: str,
+        username: str,
+        password: str,
+        text_embedding_model: str,
+        use_ssl: bool = True,
+        verify_ssl: bool = True,
+    ):
         self.search_host = search_host
+        self.use_ssl = use_ssl
+        self.verify_ssl = verify_ssl
         self.username = username
         self.password = password
         self.client = OpenSearch(
             hosts=[{'host': self.search_host, 'port': 30070}],
             http_auth=(self.username, self.password),
-            use_ssl=False,
+            use_ssl=self.use_ssl,
+            verify_certs=self.verify_ssl,
         )
         self.ai_host = ai_host
         self.text_embedding_model = text_embedding_model
@@ -20,13 +38,12 @@ class LindormVectorSearchClient:
         try:
             return self.client.indices.exists(index=index_name)
         except Exception as e:
-            # 处理可能的异常
             logging.error(f"client call check_index_exist exception {index_name}: {e}")
             return False
 
     def _embedding_query(self, query: str) -> list[float]:
         code, res_or_exception = text_embedding(self.ai_host, self.username, self.password, self.text_embedding_model,
-                                                query)
+                                                query, use_ssl=self.use_ssl, verify_ssl=self.verify_ssl)
         if code < 0:
             raise RuntimeError(f"failed to get embedding, cause:{res_or_exception}")
         assert isinstance(res_or_exception, list)
@@ -43,6 +60,7 @@ class LindormVectorSearchClient:
 
     def get_index_mappings(self, index_name: str):
         try:
+            index_name = validate_search_index_name(index_name)
             mappings = self.client.indices.get_mapping(index=index_name)
             return mappings
         except Exception as e:
@@ -50,6 +68,13 @@ class LindormVectorSearchClient:
             return None
 
     def full_text_search(self, index_name: str, query_text: str, size: int, content_field: str) -> list[str]:
+        try:
+            index_name = validate_search_index_name(index_name)
+            query_text = validate_query_text(query_text)
+            content_field = validate_search_field_name(content_field)
+            size = validate_positive_limit(size, "size")
+        except ValueError as e:
+            return [f"Rejected unsafe search request: {e}"]
         if not self._check_index_exist(index_name):
             return [f"{index_name} not exist"]
         query = {
@@ -73,6 +98,14 @@ class LindormVectorSearchClient:
             return []
 
     def vector_search(self, index_name: str, query_text: str, top_k: int, content_field: str, vector_field: str) -> list[str]:
+        try:
+            index_name = validate_search_index_name(index_name)
+            query_text = validate_query_text(query_text)
+            content_field = validate_search_field_name(content_field)
+            vector_field = validate_search_field_name(vector_field)
+            top_k = validate_positive_limit(top_k, "top_k")
+        except ValueError as e:
+            return [f"Rejected unsafe search request: {e}"]
         if not self._check_index_exist(index_name):
             return [f"{index_name} not exist"]
         vector = self._embedding_query(query_text)
@@ -99,6 +132,14 @@ class LindormVectorSearchClient:
             return []
 
     def rrf_search(self, index_name: str, query_text: str, top_k: int, content_field: str, vector_field: str) -> list[str]:
+        try:
+            index_name = validate_search_index_name(index_name)
+            query_text = validate_query_text(query_text)
+            content_field = validate_search_field_name(content_field)
+            vector_field = validate_search_field_name(vector_field)
+            top_k = validate_positive_limit(top_k, "top_k")
+        except ValueError as e:
+            return [f"Rejected unsafe search request: {e}"]
         if not self._check_index_exist(index_name):
             return [f"{index_name} not exist"]
         vector = self._embedding_query(query_text)

@@ -4,20 +4,29 @@ import requests
 
 
 #### LINDORM AI EMBEDDING ####
-def _post_model_request(host: str, username: str, password: str, model: str, data: dict, **kwargs):
-    data = json.dumps(data)
-    url = 'http://{}:{}/v1/ai/models/{}/infer'.format(host, 9002, model)
+def _post_model_request(
+    host: str,
+    username: str,
+    password: str,
+    model: str,
+    data: dict,
+    use_ssl: bool = True,
+    verify_ssl: bool = True,
+    connect_timeout: int = 60,
+    read_timeout: int = 60,
+):
+    payload = json.dumps(data)
+    scheme = "https" if use_ssl else "http"
+    url = '{}://{}:{}/v1/ai/models/{}/infer'.format(scheme, host, 9002, model)
     headers = {
         "Content-Type": "application/json",
         "x-ld-ak": username,
         "x-ld-sk": password
     }
-    connect_timeout = kwargs.get('connect_timeout', 60)
-    read_timeout = kwargs.get('read_timeout', 60)
     timeout = (connect_timeout, read_timeout)
 
     try:
-        result = requests.post(url, data=data, headers=headers, verify=False, timeout=timeout)
+        result = requests.post(url, data=payload, headers=headers, verify=verify_ssl, timeout=timeout)
         result.raise_for_status()
         return 0, result.json()['data']
     except requests.exceptions.Timeout as time_out_err:
@@ -28,9 +37,20 @@ def _post_model_request(host: str, username: str, password: str, model: str, dat
         return -1, f"request error happened: {err}"
 
 
-def text_embedding(host: str, username: str, password: str, model: str, text: str):
+def text_embedding(
+    host: str,
+    username: str,
+    password: str,
+    model: str,
+    text: str,
+    use_ssl: bool = True,
+    verify_ssl: bool = True,
+):
     data = {"input": [text]}
-    return _post_model_request(host, username, password, model, data)
+    return _post_model_request(
+        host, username, password, model, data,
+        use_ssl=use_ssl, verify_ssl=verify_ssl,
+    )
 
 
 def get_lindorm_search_host(instance_id: str, using_vpc: bool = False):

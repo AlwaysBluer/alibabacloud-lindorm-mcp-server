@@ -1,13 +1,15 @@
-from src.lindorm_mcp_server import server
 from importlib.metadata import PackageNotFoundError, version
+
+
 def main():
     """Main entry point for the package."""
+    from src.lindorm_mcp_server import server
+
     server.main()
 
-# Optionally expose other important items at package level
-__all__ = ['main', 'server']
+__all__ = ['main']
 try:
-    __version = version("lindorm-mcp-server")
+    __version__ = version("alibabacloud-lindorm-mcp-server")
 except PackageNotFoundError:
     # package is not installed
-    pass
+    __version__ = "0.0.0"

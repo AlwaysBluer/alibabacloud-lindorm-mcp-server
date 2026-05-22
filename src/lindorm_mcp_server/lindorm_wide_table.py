@@ -1,6 +1,8 @@
 import mysql.connector
 from mysql.connector import Error
 
+from .security import quote_identifier_path, validate_readonly_select
+
 
 class LindormWideTableClient:
     def __init__(self, table_host: str, username: str, password: str, database='default'):
@@ -30,7 +32,7 @@ class LindormWideTableClient:
 
     def show_tables(self) -> str:
         try:
-            self.cursor.execute(f"SHOW TABLES")
+            self.cursor.execute("SHOW TABLES")
             tables = self.cursor.fetchall()
             result = ["Tables_in_" + self.config["database"]]  # Header
             result.extend([table[0] for table in tables])
@@ -40,27 +42,30 @@ class LindormWideTableClient:
 
     def describe_table(self, table_name: str) -> str:
         try:
-            self.cursor.execute(f"DESCRIBE TABLE {table_name}")
+            safe_table_name = quote_identifier_path(table_name)
+            self.cursor.execute("DESCRIBE TABLE " + safe_table_name)
             columns = [desc[0] for desc in self.cursor.description]
             rows = self.cursor.fetchall()
             result = [",".join(map(str, row)) for row in rows]
             return "\n".join([",".join(columns)] + result)
+        except ValueError as e:
+            return f"Rejected unsafe table name: {e}"
         except Error as e:
-            return f"Error executing DESCRIBE TABLE {table_name}: {str(e)}"
+            return f"Error executing DESCRIBE TABLE {table_name}: {e}"
 
     def execute_query(self, query: str) -> str:
         """Execute SQL commands."""
         try:
-            if not query.strip().upper().startswith("SELECT"):
-                return (f"Query should start with SELECT. " +
-                        "Example: SELECT * FROM table ")
+            safe_query = validate_readonly_select(query)
 
-            self.cursor.execute(query)
+            self.cursor.execute(safe_query)
             # Regular SELECT queries
             columns = [desc[0] for desc in self.cursor.description]
             rows = self.cursor.fetchall()
             result = [",".join(map(str, row)) for row in rows]
             return "\n".join([",".join(columns)] + result)
+        except ValueError as e:
+            return f"Rejected unsafe query: {e}"
         except Error as e:
             error_msg = str(e)
             if "Detect inefficient query" in error_msg:
@@ -70,7 +75,7 @@ class LindormWideTableClient:
                         "Instead of: SELECT * FROM table")
             elif "JOIN is not allowed" in error_msg or "UNION is not allowed" in error_msg:
                 return "JOIN UNION is not allowed. Please execute 'ALTER SYSTEM SET `lindorm.sql.join_union.disabled`=FALSE' to enable join."
-            return f"Error executing query: {str(e)}"
+            return f"Error executing query: {error_msg}"
 
     def reconnect(self):
         """Reconnect to the database."""

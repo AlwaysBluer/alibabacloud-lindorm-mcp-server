@@ -21,6 +21,8 @@ cp .env.example .env
 * PASSWORD: Your Lindorm account password 
 * TEXT_EMBEDDING_MODEL: The name of your deployed text-embedding model 
 * TABLE_DATABASE: The database for SQL operations
+* LINDORM_USE_SSL: Set to true to use TLS for Search and AI engine connections
+* LINDORM_VERIFY_SSL: Set to true to verify TLS certificates
 Note: This configuration assumes all engines share the same username and password.
 
 ## Running the MCP Server
@@ -33,6 +35,14 @@ uv pip install .
 
 uv run python -m src.lindorm_mcp_server.server
 ```
+
+The server defaults to local `stdio` transport. If you explicitly run SSE transport, set an `API_KEY` with at least 32 characters; requests must include either `x-api-key: <value>` or `Authorization: Bearer <value>`.
+
+```shell
+SERVER_TRANSPORT=sse API_KEY="$(openssl rand -hex 32)" uv run python -m src.lindorm_mcp_server.server
+```
+
+Network transports bind to `127.0.0.1` by default. Binding to `0.0.0.0` requires both `SERVER_HOST=0.0.0.0` and `ALLOW_PUBLIC_BINDING=true`.
 
 ## Visual Studio Code
 1. Install the Cline extension.
@@ -64,8 +74,6 @@ uv run python -m src.lindorm_mcp_server.server
 * `lindorm_describe_table`: Get tables schema in the Lindorm database
   * Parameters
     * table_name: the table name
-
-
 
 
 

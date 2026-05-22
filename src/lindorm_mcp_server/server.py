@@ -1,11 +1,21 @@
 import argparse
 import os
+import secrets
 from contextlib import asynccontextmanager
 from typing import AsyncIterator
 from dotenv import load_dotenv
 from mcp.server.fastmcp import Context, FastMCP
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.requests import Request
+from starlette.responses import JSONResponse
 
 from .utils import *
+from .security import (
+    validate_api_key,
+    validate_lindorm_instance_id,
+    validate_model_name,
+    validate_required,
+)
 from .lindorm_vector_search import LindormVectorSearchClient
 from .lindorm_wide_table import LindormWideTableClient
 
@@ -26,7 +36,9 @@ async def server_lifespan(server: FastMCP) -> AsyncIterator[LindormContext]:
         ai_host=config.get("lindorm_ai_host"),
         username=config.get("username"),
         password=config.get("password"),
-        text_embedding_model=config.get("text_embedding_model")
+        text_embedding_model=config.get("text_embedding_model"),
+        use_ssl=config.get("use_ssl"),
+        verify_ssl=config.get("verify_ssl"),
     )
 
     sql_client = LindormWideTableClient(
@@ -42,7 +54,34 @@ async def server_lifespan(server: FastMCP) -> AsyncIterator[LindormContext]:
         pass
 
 
-mcp = FastMCP("Lindorm", lifespan=server_lifespan, log_level="ERROR")
+class APIKeyMiddleware(BaseHTTPMiddleware):
+    def __init__(self, app, api_key: str):
+        super().__init__(app)
+        self.api_key = api_key
+
+    async def dispatch(self, request: Request, call_next):
+        supplied_key = request.headers.get("x-api-key")
+        auth_header = request.headers.get("authorization", "")
+        if auth_header.lower().startswith("bearer "):
+            supplied_key = auth_header[7:].strip()
+
+        if not supplied_key or not secrets.compare_digest(supplied_key, self.api_key):
+            return JSONResponse({"error": "Unauthorized"}, status_code=401)
+
+        return await call_next(request)
+
+
+class AuthenticatedFastMCP(FastMCP):
+    api_key: str | None = None
+
+    def sse_app(self):
+        app = super().sse_app()
+        if self.api_key:
+            app.add_middleware(APIKeyMiddleware, api_key=self.api_key)
+        return app
+
+
+mcp = AuthenticatedFastMCP("Lindorm", lifespan=server_lifespan, log_level="ERROR", host="127.0.0.1")
 
 
 @mcp.tool()
@@ -128,11 +167,51 @@ def parse_arguments():
     parser = argparse.ArgumentParser(description="LINDORM MCP Server")
     parser.add_argument("--lindorm_instance_id", type=str, help="Lindorm Search Host")
     parser.add_argument("--using_vpc", type=bool, default=False, help="Whether to use the VPC network")
-    parser.add_argument("--username", type=str, default="root", help="Lindorm username")
+    parser.add_argument("--username", type=str, help="Lindorm username")
     parser.add_argument("--password", type=str, help="Lindorm password")
     parser.add_argument("--embedding_model", type=str, help="Text Embedding Model Name")
     parser.add_argument("--database", type=str, default="default", help="The Lindorm Database to execute sql")
+    parser.add_argument("--transport", choices=["stdio", "sse"], help="MCP transport protocol")
+    parser.add_argument("--host", type=str, help="Host for network transports")
+    parser.add_argument("--port", type=int, help="Port for network transports")
+    parser.add_argument("--use-ssl", action=argparse.BooleanOptionalAction, default=None,
+                        help="Use TLS for Lindorm Search and AI engine connections")
+    parser.add_argument("--verify-ssl", action=argparse.BooleanOptionalAction, default=None,
+                        help="Verify TLS certificates for Lindorm Search and AI engine connections")
     return parser.parse_args()
+
+
+def _env_or_arg_bool(env_name: str, arg_value: bool | None, default: bool) -> bool:
+    env_value = os.environ.get(env_name)
+    if env_value:
+        return str_to_bool(env_value)
+    if arg_value is not None:
+        return arg_value
+    return default
+
+
+def _configure_transport(args):
+    transport = os.environ.get("SERVER_TRANSPORT", args.transport or "stdio").replace("_", "-").lower()
+    if transport == "streamable-http":
+        raise ValueError("streamable-http is not supported by the pinned MCP runtime; use stdio or sse")
+    if transport not in {"stdio", "sse"}:
+        raise ValueError(f"Unsupported transport: {transport}")
+
+    host = os.environ.get("SERVER_HOST", args.host or "127.0.0.1")
+    port = int(os.environ.get("SERVER_PORT", args.port or 8000))
+    api_key = os.environ.get("API_KEY")
+
+    if transport != "stdio":
+        if not api_key:
+            raise ValueError("API_KEY is required when SERVER_TRANSPORT is not stdio")
+        api_key = validate_api_key(api_key)
+        if host in {"0.0.0.0", "::"} and not str_to_bool(os.environ.get("ALLOW_PUBLIC_BINDING", "false")):
+            raise ValueError("Refusing public bind without ALLOW_PUBLIC_BINDING=true")
+
+    mcp.settings.host = host
+    mcp.settings.port = port
+    mcp.api_key = api_key
+    return transport
 
 
 def main():
@@ -144,16 +223,33 @@ def main():
         using_vpc = str_to_bool(using_vpc_env)
     else:
         using_vpc = args.using_vpc
+    username = os.environ.get("USERNAME", args.username)
+    password = os.environ.get("PASSWORD", args.password)
+    embedding_model = os.environ.get("TEXT_EMBEDDING_MODEL", args.embedding_model)
+    table_database = os.environ.get("TABLE_DATABASE", args.database)
+    validate_required([
+        ("LINDORM_INSTANCE_ID", instance_id),
+        ("USERNAME", username),
+        ("PASSWORD", password),
+        ("TEXT_EMBEDDING_MODEL", embedding_model),
+        ("TABLE_DATABASE", table_database),
+    ])
+    instance_id = validate_lindorm_instance_id(instance_id)
+    embedding_model = validate_model_name(embedding_model)
+
+    transport = _configure_transport(args)
     mcp.config = {
         "lindorm_search_host": get_lindorm_search_host(instance_id, using_vpc),
         "lindorm_ai_host": get_lindorm_ai_host(instance_id, using_vpc),
         "lindorm_table_host": get_lindorm_table_host(instance_id, using_vpc),
-        "username": os.environ.get("USERNAME", args.username),
-        "password": os.environ.get("PASSWORD", args.password),
-        "text_embedding_model": os.environ.get("TEXT_EMBEDDING_MODEL", args.embedding_model),
-        "table_database": os.environ.get("TABLE_DATABASE", args.database)
+        "username": username,
+        "password": password,
+        "text_embedding_model": embedding_model,
+        "table_database": table_database,
+        "use_ssl": _env_or_arg_bool("LINDORM_USE_SSL", args.use_ssl, True),
+        "verify_ssl": _env_or_arg_bool("LINDORM_VERIFY_SSL", args.verify_ssl, True),
     }
-    mcp.run()
+    mcp.run(transport=transport)
 
 
 
