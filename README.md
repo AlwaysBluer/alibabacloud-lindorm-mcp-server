@@ -19,7 +19,8 @@ cp .env.example .env
 * USING_VPC_NETWORK: Set to true if running on VPC network, otherwise false 
 * USERNAME: Your Lindorm account username 
 * PASSWORD: Your Lindorm account password 
-* TEXT_EMBEDDING_MODEL: The name of your deployed text-embedding model 
+* TEXT_EMBEDDING_MODEL: The name of your deployed text-embedding model, defaults to `text-embedding-v4`
+* TEXT_EMBEDDING_DIMENSION: Embedding output dimension, defaults to `1024`
 * TABLE_DATABASE: The database for SQL operations
 * LINDORM_USE_SSL: Set to true to use TLS for Search and AI engine connections
 * LINDORM_VERIFY_SSL: Set to true to verify TLS certificates
@@ -74,7 +75,6 @@ Network transports bind to `127.0.0.1` by default. Binding to `0.0.0.0` requires
 * `lindorm_describe_table`: Get tables schema in the Lindorm database
   * Parameters
     * table_name: the table name
-
 
 
 

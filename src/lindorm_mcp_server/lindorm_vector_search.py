@@ -17,6 +17,7 @@ class LindormVectorSearchClient:
         username: str,
         password: str,
         text_embedding_model: str,
+        text_embedding_dimension: int | None = 1024,
         use_ssl: bool = True,
         verify_ssl: bool = True,
     ):
@@ -33,6 +34,7 @@ class LindormVectorSearchClient:
         )
         self.ai_host = ai_host
         self.text_embedding_model = text_embedding_model
+        self.text_embedding_dimension = text_embedding_dimension
 
     def _check_index_exist(self, index_name: str) -> bool:
         try:
@@ -43,7 +45,8 @@ class LindormVectorSearchClient:
 
     def _embedding_query(self, query: str) -> list[float]:
         code, res_or_exception = text_embedding(self.ai_host, self.username, self.password, self.text_embedding_model,
-                                                query, use_ssl=self.use_ssl, verify_ssl=self.verify_ssl)
+                                                query, use_ssl=self.use_ssl, verify_ssl=self.verify_ssl,
+                                                dimensions=self.text_embedding_dimension)
         if code < 0:
             raise RuntimeError(f"failed to get embedding, cause:{res_or_exception}")
         assert isinstance(res_or_exception, list)

@@ -37,6 +37,7 @@ async def server_lifespan(server: FastMCP) -> AsyncIterator[LindormContext]:
         username=config.get("username"),
         password=config.get("password"),
         text_embedding_model=config.get("text_embedding_model"),
+        text_embedding_dimension=config.get("text_embedding_dimension"),
         use_ssl=config.get("use_ssl"),
         verify_ssl=config.get("verify_ssl"),
     )
@@ -169,7 +170,8 @@ def parse_arguments():
     parser.add_argument("--using_vpc", type=bool, default=False, help="Whether to use the VPC network")
     parser.add_argument("--username", type=str, help="Lindorm username")
     parser.add_argument("--password", type=str, help="Lindorm password")
-    parser.add_argument("--embedding_model", type=str, help="Text Embedding Model Name")
+    parser.add_argument("--embedding_model", type=str, default="text-embedding-v4", help="Text Embedding Model Name")
+    parser.add_argument("--embedding_dimension", type=int, default=1024, help="Text Embedding output dimension")
     parser.add_argument("--database", type=str, default="default", help="The Lindorm Database to execute sql")
     parser.add_argument("--transport", choices=["stdio", "sse"], help="MCP transport protocol")
     parser.add_argument("--host", type=str, help="Host for network transports")
@@ -226,6 +228,7 @@ def main():
     username = os.environ.get("USERNAME", args.username)
     password = os.environ.get("PASSWORD", args.password)
     embedding_model = os.environ.get("TEXT_EMBEDDING_MODEL", args.embedding_model)
+    embedding_dimension = int(os.environ.get("TEXT_EMBEDDING_DIMENSION", args.embedding_dimension))
     table_database = os.environ.get("TABLE_DATABASE", args.database)
     validate_required([
         ("LINDORM_INSTANCE_ID", instance_id),
@@ -245,6 +248,7 @@ def main():
         "username": username,
         "password": password,
         "text_embedding_model": embedding_model,
+        "text_embedding_dimension": embedding_dimension,
         "table_database": table_database,
         "use_ssl": _env_or_arg_bool("LINDORM_USE_SSL", args.use_ssl, True),
         "verify_ssl": _env_or_arg_bool("LINDORM_VERIFY_SSL", args.verify_ssl, True),

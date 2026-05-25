@@ -4,6 +4,18 @@ import requests
 
 
 #### LINDORM AI EMBEDDING ####
+def _ensure_compatible_base_url(host: str, use_ssl: bool) -> str:
+    if host.startswith(("http://", "https://")):
+        base_url = host.rstrip("/")
+    else:
+        scheme = "https" if use_ssl else "http"
+        base_url = f"{scheme}://{host}:9002"
+
+    if base_url.endswith("/dashscope/compatible-mode/v1"):
+        return base_url
+    return f"{base_url}/dashscope/compatible-mode/v1"
+
+
 def _post_model_request(
     host: str,
     username: str,
@@ -16,19 +28,20 @@ def _post_model_request(
     read_timeout: int = 60,
 ):
     payload = json.dumps(data)
-    scheme = "https" if use_ssl else "http"
-    url = '{}://{}:{}/v1/ai/models/{}/infer'.format(scheme, host, 9002, model)
+    url = f"{_ensure_compatible_base_url(host, use_ssl)}/embeddings"
     headers = {
         "Content-Type": "application/json",
         "x-ld-ak": username,
-        "x-ld-sk": password
+        "x-ld-sk": password,
+        "Accept-Encoding": "identity",
     }
     timeout = (connect_timeout, read_timeout)
 
     try:
         result = requests.post(url, data=payload, headers=headers, verify=verify_ssl, timeout=timeout)
         result.raise_for_status()
-        return 0, result.json()['data']
+        embeddings = [item["embedding"] for item in result.json()["data"]]
+        return 0, embeddings
     except requests.exceptions.Timeout as time_out_err:
         return -1, f"request out of time: f{time_out_err}"
     except requests.exceptions.HTTPError as http_err:
@@ -45,8 +58,15 @@ def text_embedding(
     text: str,
     use_ssl: bool = True,
     verify_ssl: bool = True,
+    dimensions: int | None = 1024,
 ):
-    data = {"input": [text]}
+    data = {
+        "model": model,
+        "input": [text],
+        "encoding_format": "float",
+    }
+    if isinstance(dimensions, int):
+        data["dimensions"] = dimensions
     return _post_model_request(
         host, username, password, model, data,
         use_ssl=use_ssl, verify_ssl=verify_ssl,
