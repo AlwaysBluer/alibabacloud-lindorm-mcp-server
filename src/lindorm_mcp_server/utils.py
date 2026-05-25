@@ -22,8 +22,8 @@ def _post_model_request(
     password: str,
     model: str,
     data: dict,
-    use_ssl: bool = True,
-    verify_ssl: bool = True,
+    use_ssl: bool = False,
+    verify_ssl: bool = False,
     connect_timeout: int = 60,
     read_timeout: int = 60,
 ):
@@ -56,8 +56,8 @@ def text_embedding(
     password: str,
     model: str,
     text: str,
-    use_ssl: bool = True,
-    verify_ssl: bool = True,
+    use_ssl: bool = False,
+    verify_ssl: bool = False,
     dimensions: int | None = 1024,
 ):
     data = {

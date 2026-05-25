@@ -55,3 +55,11 @@ def test_configure_transport_rejects_short_api_key(monkeypatch):
 
     with pytest.raises(ValueError, match="at least 32 characters"):
         server._configure_transport(_args())
+
+
+def test_lindorm_ssl_defaults_are_disabled(monkeypatch):
+    monkeypatch.delenv("LINDORM_USE_SSL", raising=False)
+    monkeypatch.delenv("LINDORM_VERIFY_SSL", raising=False)
+
+    assert server._env_or_arg_bool("LINDORM_USE_SSL", None, False) is False
+    assert server._env_or_arg_bool("LINDORM_VERIFY_SSL", None, False) is False

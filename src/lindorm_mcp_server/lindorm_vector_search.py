@@ -18,8 +18,8 @@ class LindormVectorSearchClient:
         password: str,
         text_embedding_model: str,
         text_embedding_dimension: int | None = 1024,
-        use_ssl: bool = True,
-        verify_ssl: bool = True,
+        use_ssl: bool = False,
+        verify_ssl: bool = False,
     ):
         self.search_host = search_host
         self.use_ssl = use_ssl

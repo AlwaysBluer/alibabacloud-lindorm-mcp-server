@@ -250,8 +250,8 @@ def main():
         "text_embedding_model": embedding_model,
         "text_embedding_dimension": embedding_dimension,
         "table_database": table_database,
-        "use_ssl": _env_or_arg_bool("LINDORM_USE_SSL", args.use_ssl, True),
-        "verify_ssl": _env_or_arg_bool("LINDORM_VERIFY_SSL", args.verify_ssl, True),
+        "use_ssl": _env_or_arg_bool("LINDORM_USE_SSL", args.use_ssl, False),
+        "verify_ssl": _env_or_arg_bool("LINDORM_VERIFY_SSL", args.verify_ssl, False),
     }
     mcp.run(transport=transport)
 
